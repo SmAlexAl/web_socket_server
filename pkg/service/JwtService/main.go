@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/dgrijalva/jwt-go/v4"
+	"log"
 	"os"
 	"time"
 )
@@ -26,7 +27,7 @@ func GenerateToken(tokenData *TokenData) (string, error) {
 
 	atClaims := Claims{
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: jwt.At(time.Now().Add(time.Second * 10)),
+			ExpiresAt: jwt.At(time.Now().Add(time.Second * 500)),
 			IssuedAt:  jwt.At(time.Now()),
 		},
 		PackageName: tokenData.ApplicationPackageName,
@@ -46,12 +47,17 @@ func GenerateToken(tokenData *TokenData) (string, error) {
 func ParseToken(token string, conn *sql.DB) (bool, *ProfileDto) {
 	var jwtKey = []byte(os.Getenv("JWT_TOKEN_SIGNATURE"))
 
-	tokenNew, _ := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+	tokenNew, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
 		return jwtKey, nil
 	})
+
+	if err != nil {
+		log.Println(err)
+		return false, nil
+	}
 
 	claims, _ := tokenNew.Claims.(*Claims)
 
@@ -73,8 +79,6 @@ func ParseToken(token string, conn *sql.DB) (bool, *ProfileDto) {
 	if profileDto == nil {
 		return false, nil
 	}
-
-	//if profileDto
 
 	return true, profileDto
 }

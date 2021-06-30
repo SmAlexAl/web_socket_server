@@ -16,6 +16,7 @@ func GetProfileData(conn *sql.DB, tokenData TokenData) *ProfileDto {
                 d.udid,
                 a.id as accountId,
                 p.id as profileId,
+                p.name as name,
                 c.id as clientId
             FROM DeviceClientInstall dci
             INNER JOIN ClientVersion cv ON dci.clientVersionId = cv.id
@@ -51,7 +52,7 @@ func GetProfileData(conn *sql.DB, tokenData TokenData) *ProfileDto {
 		}
 	}()
 	for rows.Next() {
-		profileDto := new(ProfileDto)
+		profileDto = &ProfileDto{}
 		err := rows.Scan(
 			&profileDto.Dci,
 			&profileDto.DeveciId,
@@ -59,6 +60,7 @@ func GetProfileData(conn *sql.DB, tokenData TokenData) *ProfileDto {
 			&profileDto.Udid,
 			&profileDto.AccountId,
 			&profileDto.ProfileId,
+			&profileDto.ProfileName,
 			&profileDto.ClientId,
 		)
 

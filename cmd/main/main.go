@@ -10,26 +10,35 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
+	"time"
 )
 
 var (
 	mainChat  *chat.Chat
 	mysqlConn *sql.DB
+	file      *os.File
 )
 
 func main() {
+	var err error
 	http.HandleFunc("/chat/ws", wsHandler)
 	http.HandleFunc("/token", getTokenHanlder)
 
 	godotenv.Load()
 	mysqlConn = mysql.Open()
 	mainChat = chat.NewMainChat()
+	timeStr := strconv.FormatInt(time.Now().Unix(), 10)
+	file, err = os.Create("errorWebSocket_" + timeStr)
 
-	//if err != nil {
-	//	fmt.Println(err)
-	//}
-
+	if err != nil {
+		log.Println(err)
+	}
 	panic(http.ListenAndServe(":8080", nil))
+
+	mysqlConn.Close()
+
 }
 
 func getTokenHanlder(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +66,17 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	user := mainChat.AddUser(conn)
 
-	user.Reader(mysqlConn)
+	err = user.Reader(mysqlConn)
+
+	if err != nil {
+		response := chat.ErrorResponse{
+			Code:    500,
+			Message: err.Error(),
+		}
+		user.ErrorResponse(response)
+
+		file.WriteString(err.Error() + "\n")
+	}
 
 	chat.Remove(user)
 

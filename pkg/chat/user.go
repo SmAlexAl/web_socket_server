@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"github.com/SmAlexAl/web_socket_server/pkg/service/JwtService"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"log"
@@ -31,54 +32,75 @@ func (u *User) writeRaw(p []byte) error {
 	return err
 }
 
-func (u *User) Reader(mysqlConn *sql.DB) {
+func (u *User) Reader(mysqlConn *sql.DB) error {
 	for {
 		requestData, err := u.ReadRequest()
+
+		if err != nil {
+			log.Println(err)
+			return err
+		}
 
 		valid, profileDto := JwtService.ParseToken(requestData.Token, mysqlConn)
 
 		if valid != true {
-			response := JwtService.ErrorResponse{
+			response := ErrorResponse{
 				Message: "Invalid token",
 				Code:    10001,
 			}
-			u.tokenErrorResponse(response)
+			u.ErrorResponse(response)
 		} else {
 			u.init(*profileDto)
 
 			if err != nil {
 				log.Println(err)
-				return
+				return err
 			}
 			switch requestData.Type {
 			case "message":
-				requestData.Params["time"] = timestamp()
-
+				requestData.Params = updateRequestParams(requestData.Params, profileDto)
+				spew.Dump(requestData.Params)
 				err = u.chat.Broadcast("publish", requestData.Params)
 				if err != nil {
 					log.Println(err)
-					return
+					return err
 				}
 			case "message_clan":
-				requestData.Params["time"] = timestamp()
+				requestData.Params = updateRequestParams(requestData.Params, profileDto)
 
+				spew.Dump(requestData.Params)
 				err = u.clanChat.Broadcast("publish", requestData.Params)
 				if err != nil {
 					log.Println(err)
-					return
+					return err
 				}
 			}
 		}
 	}
 }
 
-func (u *User) tokenErrorResponse(response JwtService.ErrorResponse) {
+func updateRequestParams(params Object, profileDto *JwtService.ProfileDto) Object {
+	params["responseTime"] = timestamp()
+	if profileDto.ProfileId.Valid {
+		params["profileId"] = profileDto.ProfileId.String
+	}
+
+	if profileDto.ProfileName.Valid {
+		params["name"] = profileDto.ProfileName.String
+	}
+
+	return params
+}
+
+func (u *User) ErrorResponse(response ErrorResponse) {
 	var buf bytes.Buffer
 
 	w := wsutil.NewWriter(&buf, ws.StateServerSide, ws.OpText)
 	encoder := json.NewEncoder(w)
 
 	encoder.Encode(response)
+
+	w.Flush()
 
 	u.writeRaw(buf.Bytes())
 }

@@ -18,10 +18,6 @@ type TokenResponse struct {
 	Token string `json:"token"`
 }
 
-type ErrorResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
 type TokenData struct {
 	ApplicationPackageName string
 	InstallId              string
