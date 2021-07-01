@@ -10,7 +10,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func Open() *sql.DB {
+func Open() (*sql.DB, error) {
 	var conn *sql.DB
 	var err error
 
@@ -27,7 +27,7 @@ func Open() *sql.DB {
 		log.Fatal(err)
 	}
 
-	return conn
+	return conn, err
 }
 
 func Close(db io.Closer) {

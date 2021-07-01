@@ -23,6 +23,8 @@ func (c Claims) Valid(helper *jwt.ValidationHelper) error {
 }
 
 func GenerateToken(tokenData *TokenData) (string, error) {
+	spew.Dump("generate sign:")
+	spew.Dump(os.Getenv("JWT_TOKEN_SIGNATURE"))
 	var jwtKey = []byte(os.Getenv("JWT_TOKEN_SIGNATURE"))
 
 	atClaims := Claims{
@@ -45,6 +47,8 @@ func GenerateToken(tokenData *TokenData) (string, error) {
 }
 
 func ParseToken(token string, conn *sql.DB) (bool, *ProfileDto) {
+	spew.Dump("parse sign:")
+	spew.Dump(os.Getenv("JWT_TOKEN_SIGNATURE"))
 	var jwtKey = []byte(os.Getenv("JWT_TOKEN_SIGNATURE"))
 
 	tokenNew, err := jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
@@ -55,6 +59,7 @@ func ParseToken(token string, conn *sql.DB) (bool, *ProfileDto) {
 	})
 
 	if err != nil {
+		spew.Dump("parse token error")
 		log.Println(err)
 		return false, nil
 	}
@@ -75,6 +80,9 @@ func ParseToken(token string, conn *sql.DB) (bool, *ProfileDto) {
 	}
 
 	profileDto := GetProfileData(conn, tokenData)
+
+	spew.Dump("profileDto: \n")
+	spew.Dump(profileDto)
 
 	if profileDto == nil {
 		return false, nil

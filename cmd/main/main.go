@@ -6,6 +6,7 @@ import (
 	"github.com/SmAlexAl/web_socket_server/internal/connection/mysql"
 	"github.com/SmAlexAl/web_socket_server/pkg/chat"
 	"github.com/SmAlexAl/web_socket_server/pkg/service/JwtService"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gobwas/ws"
 	"github.com/joho/godotenv"
 	"log"
@@ -26,19 +27,31 @@ func main() {
 	http.HandleFunc("/chat/ws", wsHandler)
 	http.HandleFunc("/token", getTokenHanlder)
 
+	spew.Dump("handle ok")
 	godotenv.Load()
-	mysqlConn = mysql.Open()
+	mysqlConn, err = mysql.Open()
+
+	if err != nil {
+		file.WriteString(err.Error() + "\n")
+		panic(err)
+	}
+
+	spew.Dump("mysql ok")
+
 	mainChat = chat.NewMainChat()
 	timeStr := strconv.FormatInt(time.Now().Unix(), 10)
 	file, err = os.Create("errorWebSocket_" + timeStr)
 
+	spew.Dump("file ok")
 	if err != nil {
 		log.Println(err)
 	}
+	defer func() {
+		mysqlConn.Close()
+		file.Close()
+	}()
+
 	panic(http.ListenAndServe(":8080", nil))
-
-	mysqlConn.Close()
-
 }
 
 func getTokenHanlder(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +74,9 @@ func getTokenHanlder(w http.ResponseWriter, r *http.Request) {
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	conn, _, _, err := ws.UpgradeHTTP(r, w)
+	spew.Dump("socket connection ok")
 	if err != nil {
+		spew.Dump(err)
 		log.Println(err)
 	}
 	user := mainChat.AddUser(conn)
